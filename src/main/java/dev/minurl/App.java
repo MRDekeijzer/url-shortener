@@ -31,7 +31,13 @@ public class App {
 
         var app = Javalin.create(cfg -> {
             cfg.showJavalinBanner = false;
-            cfg.bundledPlugins.enableCors(cors -> cors.addRule(r -> r.anyHost()));
+            cfg.bundledPlugins.enableCors(cors -> cors.addRule(rule -> {
+                if ("local".equals(config.environment())) {
+                    rule.anyHost();
+                } else {
+                    rule.allowHost(config.baseUrl());
+                }
+            }));
         });
 
         app.before(ctx -> ctx.attribute("request-start-time", System.nanoTime()));

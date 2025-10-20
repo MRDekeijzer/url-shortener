@@ -49,9 +49,6 @@ public class UrlNormalizer {
         }
 
         URI parsed = parse(trimmed);
-        if (parsed.getScheme() == null) {
-            parsed = parse("https://" + trimmed);
-        }
         parsed = enforceSupportedScheme(parsed);
 
         String scheme = parsed.getScheme().toLowerCase(Locale.ROOT);
@@ -155,8 +152,7 @@ public class UrlNormalizer {
                 name = part;
             }
             String decodedName = percentDecode(name, true);
-            String lowerName = decodedName.toLowerCase(Locale.ROOT);
-            if (isTrackingParameter(lowerName)) {
+            if (isTrackingParameter(decodedName)) {
                 continue;
             }
             String encodedName = encodeQueryComponent(decodedName);
@@ -171,11 +167,16 @@ public class UrlNormalizer {
         if (normalizedParts.isEmpty()) {
             return null;
         }
+        normalizedParts.sort(String::compareTo);
         return String.join("&", normalizedParts);
     }
 
-    private static boolean isTrackingParameter(String nameLower) {
-        return nameLower.startsWith("utm_") || TRACKING_PARAMS.contains(nameLower);
+    private static boolean isTrackingParameter(String name) {
+        if (name == null || name.isEmpty()) {
+            return false;
+        }
+        String lowerName = name.toLowerCase(Locale.ROOT);
+        return lowerName.startsWith("utm_") || TRACKING_PARAMS.contains(lowerName);
     }
 
     private static String encodePathSegment(String segment) {

@@ -46,7 +46,7 @@ public final class AppConfig {
     public static AppConfig load() {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 
-        String baseUrl = readOrDefault(dotenv, "BASE_URL", DEFAULT_BASE_URL);
+        String baseUrl = stripTrailingSlash(readOrDefault(dotenv, "BASE_URL", DEFAULT_BASE_URL));
         if (baseUrl.isBlank()) {
             throw new IllegalArgumentException("BASE_URL must not be blank");
         }
@@ -60,8 +60,8 @@ public final class AppConfig {
         int urlMinLength = parsePositiveInt(
                 readOrDefault(dotenv, "URL_MIN_LENGTH", Integer.toString(DEFAULT_URL_MIN_LENGTH)),
                 "URL_MIN_LENGTH");
-        if (urlMinLength > 43) {
-            throw new IllegalArgumentException("URL_MIN_LENGTH must be between 1 and 44");
+        if (urlMinLength > 42) {
+            throw new IllegalArgumentException("URL_MIN_LENGTH must be between 1 and 42");
         }
         int rateLimit = parsePositiveInt(
                 readOrDefault(dotenv, "RATE_LIMIT_PER_MINUTE", Integer.toString(DEFAULT_RATE_LIMIT_PER_MINUTE)),
@@ -122,6 +122,16 @@ public final class AppConfig {
     private static String readOrDefault(Dotenv dotenv, String key, String defaultValue) {
         String value = readOptional(dotenv, key);
         return value != null ? value : defaultValue;
+    }
+
+    private static String stripTrailingSlash(String value) {
+        int schemeIndex = value.indexOf("://");
+        int cutoff = schemeIndex >= 0 ? schemeIndex + 3 : 0;
+        int end = value.length();
+        while (end > cutoff && value.charAt(end - 1) == '/') {
+            end--;
+        }
+        return value.substring(0, end);
     }
 
     private static String readOptional(Dotenv dotenv, String key) {
