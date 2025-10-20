@@ -75,7 +75,11 @@ public class UrlNormalizer {
     }
 
     private static URI enforceSupportedScheme(URI uri) {
-        String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+        String scheme = uri.getScheme();
+        if (scheme == null) {
+            throw new BadRequestResponse("missing scheme");
+        }
+        scheme = scheme.toLowerCase(Locale.ROOT);
         if ("http".equals(scheme) || "https".equals(scheme)) {
             return uri;
         }

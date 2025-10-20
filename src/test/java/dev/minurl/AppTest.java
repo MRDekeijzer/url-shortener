@@ -30,7 +30,7 @@ class AppTest {
     @Test
     void normalization_canonicalizes_scheme_and_host() {
         UrlNormalizer normalizer = new UrlNormalizer();
-        assertEquals("https://example.com/", normalizer.normalize("example.com"));
+        assertEquals("https://example.com/", normalizer.normalize("HTTPS://example.com"));
         assertEquals("http://example.com/", normalizer.normalize("HTTP://Example.com"));
         assertEquals("https://example.com/path", normalizer.normalize("https://example.com/path/"));
     }

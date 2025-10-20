@@ -118,7 +118,6 @@ public final class AppConfig {
         return environment;
     }
 
-    // TODO: Move to a shared utils class
     private static String readOrDefault(Dotenv dotenv, String key, String defaultValue) {
         String value = readOptional(dotenv, key);
         return value != null ? value : defaultValue;
