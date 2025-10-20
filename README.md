@@ -91,3 +91,7 @@ Both scripts honour standard `PG*` environment variables and default to the loca
 ## TODO
 
 - Add frontend
+
+  Build docker image: docker build --build-arg JAR_URL="http://host.docker.internal:8000/minurl-0.8.0-shaded.jar" -t minurl .
+  Run docker image: docker run --rm -p 7000:7000 -e APP_ENV=local -e DB_URL="jdbc:postgresql://host.docker.internal:5433/minurl" -e DB_USER=minurl -e DB_PASSWORD=minurl -e BASIC_AUTH_USERS='minurl:$2a$12$BTFuXuKhSPsSYDVcMoaBCeT7Cb7NHCG/Cydctc5QzA3darniMHGiu' minurl
+  Run local python server: python -m http.server 8000
