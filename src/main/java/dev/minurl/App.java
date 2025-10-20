@@ -3,6 +3,8 @@ package dev.minurl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 import dev.minurl.db.DataSourceFactory;
 import dev.minurl.db.DatabaseMigrator;
 import dev.minurl.db.JdbcUrlRepository;
@@ -55,7 +57,7 @@ public class App {
             ctx.redirect(service.resolve(code));
         });
 
-        app.get("/healthz", ctx -> ctx.result("ok"));
+        app.get("/api/health", ctx -> ctx.json(Map.of("status", "ok")));
 
         app.after(ctx -> {
             Long start = ctx.attribute("request-start-time");
