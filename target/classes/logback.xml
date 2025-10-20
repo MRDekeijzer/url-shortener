@@ -1,0 +1,28 @@
+<configuration scan="true">
+  <property name="LOG_DIR" value="${LOG_DIR:-logs}" />
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="REQUESTS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_DIR}/requests.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_DIR}/requests.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>7</maxHistory>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="dev.minurl.requests" level="INFO" additivity="false">
+    <appender-ref ref="REQUESTS" />
+  </logger>
+
+  <root level="INFO">
+    <appender-ref ref="STDOUT" />
+  </root>
+</configuration>

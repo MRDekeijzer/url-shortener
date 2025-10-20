@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0001-create-short-urls
+      author: codex
+      changes:
+        - createTable:
+            tableName: short_urls
+            columns:
+              - column:
+                  name: code
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: normalized_url
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: short_urls
+            columnNames: normalized_url
+            constraintName: uq_short_urls_normalized_url
+      rollback:
+        - dropTable:
+            tableName: short_urls

@@ -29,6 +29,14 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.6.1</version>
+        <configuration>
+          <mainClass>dev.minurl.App</mainClass>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <version>3.4.2</version>
         <configuration>
@@ -50,6 +58,18 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.liquibase</groupId>
+        <artifactId>liquibase-maven-plugin</artifactId>
+        <version>4.29.1</version>
+        <configuration>
+          <changeLogFile>src/main/resources/liquibase/changelog-master.yaml</changeLogFile>
+          <url>${env:DB_URL}</url>
+          <username>${env:DB_USER}</username>
+          <password>${env:DB_PASSWORD}</password>
+          <contexts>${env:LIQUIBASE_CONTEXTS}</contexts>
+        </configuration>
       </plugin>
     </plugins>
   </build>

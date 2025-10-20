@@ -10,26 +10,37 @@ public final class AppConfig {
     public static final String DEFAULT_BASE_URL = "http://localhost:7000";
     public static final int DEFAULT_PORT = 7000;
     public static final int DEFAULT_RATE_LIMIT_PER_MINUTE = 60;
+    public static final int DEFAULT_URL_MIN_LENGTH = 1;
+    public static final String DEFAULT_ENVIRONMENT = "local";
+    public static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/minurl";
+    public static final String DEFAULT_DB_USER = "minurl";
+    public static final String DEFAULT_DB_PASSWORD = "minurl";
 
     private final String baseUrl;
     private final int port;
+    private final int urlMinLength;
     private final String dbUrl;
     private final String dbUser;
     private final String dbPassword;
     private final int rateLimitPerMinute;
+    private final String environment;
 
     private AppConfig(String baseUrl,
             int port,
+            int urlMinLength,
             String dbUrl,
             String dbUser,
             String dbPassword,
-            int rateLimitPerMinute) {
+            int rateLimitPerMinute,
+            String environment) {
         this.baseUrl = baseUrl;
         this.port = port;
+        this.urlMinLength = urlMinLength;
         this.dbUrl = dbUrl;
         this.dbUser = dbUser;
         this.dbPassword = dbPassword;
         this.rateLimitPerMinute = rateLimitPerMinute;
+        this.environment = environment;
     }
 
     public static AppConfig load() {
@@ -40,20 +51,39 @@ public final class AppConfig {
             throw new IllegalArgumentException("BASE_URL must not be blank");
         }
 
+        String environment = readOrDefault(dotenv, "APP_ENV", DEFAULT_ENVIRONMENT).toLowerCase();
+        if (!environment.matches("local|prod")) {
+            throw new IllegalArgumentException("APP_ENV must be either 'local' or 'prod'");
+        }
+
         int port = parsePositiveInt(readOrDefault(dotenv, "PORT", Integer.toString(DEFAULT_PORT)), "PORT");
+        int urlMinLength = parsePositiveInt(
+                readOrDefault(dotenv, "URL_MIN_LENGTH", Integer.toString(DEFAULT_URL_MIN_LENGTH)),
+                "URL_MIN_LENGTH");
+        if (urlMinLength > 43) {
+            throw new IllegalArgumentException("URL_MIN_LENGTH must be between 1 and 44");
+        }
         int rateLimit = parsePositiveInt(
                 readOrDefault(dotenv, "RATE_LIMIT_PER_MINUTE", Integer.toString(DEFAULT_RATE_LIMIT_PER_MINUTE)),
                 "RATE_LIMIT_PER_MINUTE");
 
-        String dbUrl = readOptional(dotenv, "DB_URL");
-        String dbUser = readOptional(dotenv, "DB_USER");
-        String dbPassword = readOptional(dotenv, "DB_PASSWORD");
+        String dbUrl = readOrDefault(dotenv, "DB_URL", DEFAULT_DB_URL);
+        String dbUser = readOrDefault(dotenv, "DB_USER", DEFAULT_DB_USER);
+        String dbPassword = readOrDefault(dotenv, "DB_PASSWORD", DEFAULT_DB_PASSWORD);
 
-        if ((dbUser != null || dbPassword != null) && dbUrl == null) {
-            throw new IllegalArgumentException("DB_URL is required when DB_USER or DB_PASSWORD is provided");
+        if (dbUrl.isBlank()) {
+            throw new IllegalArgumentException("DB_URL must not be blank");
         }
 
-        return new AppConfig(baseUrl, port, dbUrl, dbUser, dbPassword, rateLimit);
+        if (dbUser.isBlank()) {
+            throw new IllegalArgumentException("DB_USER must not be blank");
+        }
+
+        if (dbPassword.isBlank()) {
+            throw new IllegalArgumentException("DB_PASSWORD must not be blank");
+        }
+
+        return new AppConfig(baseUrl, port, urlMinLength, dbUrl, dbUser, dbPassword, rateLimit, environment);
     }
 
     public String baseUrl() {
@@ -62,6 +92,10 @@ public final class AppConfig {
 
     public int port() {
         return port;
+    }
+
+    public int urlMinLength() {
+        return urlMinLength;
     }
 
     public String dbUrl() {
@@ -80,6 +114,11 @@ public final class AppConfig {
         return rateLimitPerMinute;
     }
 
+    public String environment() {
+        return environment;
+    }
+
+    // TODO: Move to a shared utils class
     private static String readOrDefault(Dotenv dotenv, String key, String defaultValue) {
         String value = readOptional(dotenv, key);
         return value != null ? value : defaultValue;

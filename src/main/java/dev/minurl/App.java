@@ -1,101 +1,68 @@
 package dev.minurl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import dev.minurl.db.DataSourceFactory;
+import dev.minurl.db.DatabaseMigrator;
+import dev.minurl.db.JdbcUrlRepository;
 import io.javalin.Javalin;
 import io.javalin.http.BadRequestResponse;
-import io.javalin.http.NotFoundResponse;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class App {
+    private static final Logger REQUEST_LOGGER = LoggerFactory.getLogger("dev.minurl.requests");
+
     public static void main(String[] args) {
         AppConfig config = AppConfig.load();
+        var dataSource = DataSourceFactory.create(config);
+        var migrator = new DatabaseMigrator(
+                dataSource,
+                "liquibase/changelog-master.yaml",
+                "local".equals(config.environment()) ? "local" : null);
+        migrator.migrate();
+
+        UrlShortenerService service = new UrlShortenerService(
+                new JdbcUrlRepository(dataSource),
+                new UrlNormalizer(),
+                new DeterministicCodeGenerator(),
+                config.urlMinLength());
+
         String baseUrl = config.baseUrl();
-        UrlStore store = new UrlStore();
 
         var app = Javalin.create(cfg -> {
             cfg.showJavalinBanner = false;
             cfg.bundledPlugins.enableCors(cors -> cors.addRule(r -> r.anyHost()));
         });
 
+        app.before(ctx -> ctx.attribute("request-start-time", System.nanoTime()));
+
         app.post("/api/shorten", ctx -> {
             var body = ctx.bodyAsClass(ShortenReq.class);
             if (body == null || body.url == null)
                 throw new BadRequestResponse("missing url");
-            String normalized = normalizeUrl(body.url);
-            String code = store.put(normalized);
+            String code = service.shorten(body.url);
             ctx.json(new ShortenRes(baseUrl + "/" + code));
         });
 
         app.get("/{code}", ctx -> {
             String code = ctx.pathParam("code");
-            String url = store.get(code);
-            if (url == null)
-                throw new NotFoundResponse("unknown code");
-            ctx.redirect(url);
+            ctx.redirect(service.resolve(code));
         });
 
         app.get("/healthz", ctx -> ctx.result("ok"));
 
+        app.after(ctx -> {
+            Long start = ctx.attribute("request-start-time");
+            long durationMs = start == null ? -1L : (System.nanoTime() - start) / 1_000_000;
+            int status = ctx.res().getStatus();
+            REQUEST_LOGGER.info("{} {} {} {}ms",
+                    ctx.method(),
+                    ctx.fullUrl(),
+                    status,
+                    durationMs);
+        });
+
         app.start(config.port());
-    }
-
-    static String normalizeUrl(String url) {
-        try {
-            URI u = new URI(url);
-            if (u.getScheme() == null) {
-                u = new URI("https://" + url);
-            }
-            var norm = new URI(
-                    u.getScheme().toLowerCase(),
-                    u.getUserInfo(),
-                    u.getHost(),
-                    u.getPort(),
-                    (u.getPath() == null || u.getPath().isEmpty()) ? "/" : u.getPath(),
-                    u.getQuery(),
-                    u.getFragment());
-            return norm.toString();
-        } catch (URISyntaxException e) {
-            throw new BadRequestResponse("invalid url");
-        }
-    }
-
-    static class UrlStore {
-        private final Map<String, String> codeToUrl = new ConcurrentHashMap<>();
-        private final Map<String, String> urlToCode = new ConcurrentHashMap<>();
-        private final AtomicLong seq = new AtomicLong(125L);
-
-        String put(String url) {
-            var existing = urlToCode.get(url);
-            if (existing != null)
-                return existing;
-            long id = seq.incrementAndGet();
-            String code = toBase62(id);
-            codeToUrl.put(code, url);
-            urlToCode.put(url, code);
-            return code;
-        }
-
-        String get(String code) {
-            return codeToUrl.get(code);
-        }
-
-        private static final char[] ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                .toCharArray();
-
-        static String toBase62(long n) {
-            if (n == 0)
-                return "0";
-            StringBuilder sb = new StringBuilder();
-            while (n > 0) {
-                sb.append(ALPHABET[(int) (n % 62)]);
-                n /= 62;
-            }
-            return sb.reverse().toString();
-        }
     }
 
     public static class ShortenReq {
