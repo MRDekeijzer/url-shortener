@@ -1,5 +1,9 @@
 package dev.minurl;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import io.github.cdimascio.dotenv.Dotenv;
 
 /**
@@ -24,6 +28,7 @@ public final class AppConfig {
     private final String dbPassword;
     private final int rateLimitPerMinute;
     private final String environment;
+    private final Map<String, String> basicAuthUsers;
 
     private AppConfig(String baseUrl,
             int port,
@@ -32,7 +37,8 @@ public final class AppConfig {
             String dbUser,
             String dbPassword,
             int rateLimitPerMinute,
-            String environment) {
+            String environment,
+            Map<String, String> basicAuthUsers) {
         this.baseUrl = baseUrl;
         this.port = port;
         this.urlMinLength = urlMinLength;
@@ -41,6 +47,7 @@ public final class AppConfig {
         this.dbPassword = dbPassword;
         this.rateLimitPerMinute = rateLimitPerMinute;
         this.environment = environment;
+        this.basicAuthUsers = basicAuthUsers;
     }
 
     public static AppConfig load() {
@@ -83,7 +90,17 @@ public final class AppConfig {
             throw new IllegalArgumentException("DB_PASSWORD must not be blank");
         }
 
-        return new AppConfig(baseUrl, port, urlMinLength, dbUrl, dbUser, dbPassword, rateLimit, environment);
+        Map<String, String> basicAuthUsers = parseBasicAuthUsers(readOptional(dotenv, "BASIC_AUTH_USERS"));
+
+        return new AppConfig(baseUrl,
+                port,
+                urlMinLength,
+                dbUrl,
+                dbUser,
+                dbPassword,
+                rateLimit,
+                environment,
+                basicAuthUsers);
     }
 
     public String baseUrl() {
@@ -118,6 +135,10 @@ public final class AppConfig {
         return environment;
     }
 
+    public Map<String, String> basicAuthUsers() {
+        return basicAuthUsers;
+    }
+
     private static String readOrDefault(Dotenv dotenv, String key, String defaultValue) {
         String value = readOptional(dotenv, key);
         return value != null ? value : defaultValue;
@@ -143,6 +164,43 @@ public final class AppConfig {
             return fromDotEnv.trim();
         }
         return null;
+    }
+
+    private static Map<String, String> parseBasicAuthUsers(String rawUsers) {
+        if (rawUsers == null || rawUsers.isBlank()) {
+            return Map.of();
+        }
+
+        String[] entries = rawUsers.split(",");
+        Map<String, String> result = new LinkedHashMap<>();
+        for (String entry : entries) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            String[] parts = trimmed.split(":", 2);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException(
+                        "BASIC_AUTH_USERS entries must be in the form username:bcryptHash");
+            }
+            String username = parts[0].trim();
+            String bcryptHash = parts[1].trim();
+            if (username.isEmpty()) {
+                throw new IllegalArgumentException("BASIC_AUTH_USERS usernames must not be blank");
+            }
+            if (bcryptHash.isEmpty()) {
+                throw new IllegalArgumentException("BASIC_AUTH_USERS hashes must not be blank");
+            }
+            if (!bcryptHash.startsWith("$2")) {
+                throw new IllegalArgumentException(
+                        "BASIC_AUTH_USERS hashes must be BCrypt (prefix $2)");
+            }
+            if (result.put(username, bcryptHash) != null) {
+                throw new IllegalArgumentException("Duplicate username in BASIC_AUTH_USERS: " + username);
+            }
+        }
+
+        return Collections.unmodifiableMap(result);
     }
 
     private static int parsePositiveInt(String rawValue, String key) {

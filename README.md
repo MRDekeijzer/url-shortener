@@ -14,7 +14,7 @@ Java 21 URL shortener backed by Postgres with deterministic SHA-256 based short 
 2. Build the application: `mvn clean package`
 3. Run locally (Linux/macOS): `APP_ENV=local mvn exec:java`  
    Run locally (PowerShell): `$Env:APP_ENV = 'local'; mvn exec:java`
-4. Shorten a URL: `curl -X POST http://localhost:7000/api/shorten -H "Content-Type: application/json" -d '{"url":"https://example.com"}'`
+4. Shorten a URL: `curl -u admin:password -X POST http://localhost:7000/api/shorten -H "Content-Type: application/json" -d '{"url":"https://example.com"}'`
 
 Liquibase migrations run automatically on startup. When `APP_ENV=local` the development seed (`https://example.com/`) is inserted.
 
@@ -22,17 +22,37 @@ Liquibase migrations run automatically on startup. When `APP_ENV=local` the deve
 
 All configuration is supplied via environment variables or an optional `.env` file.
 
-| Variable      | Default                                   | Description                                                          |
-| ------------- | ----------------------------------------- | -------------------------------------------------------------------- |
-| `APP_ENV`     | `local`                                   | `local` enables seed data; set to `prod` for production deployments. |
-| `BASE_URL`    | `http://localhost:7000`                   | External origin used when constructing short URLs.                   |
-| `PORT`        | `7000`                                    | HTTP listen port.                                                    |
-| `DB_URL`      | `jdbc:postgresql://localhost:5432/minurl` | JDBC URL for Postgres.                                               |
-| `DB_USER`     | `minurl`                                  | Database username.                                                   |
-| `DB_PASSWORD` | `minurl`                                  | Database password.                                                   |
-| `LOG_DIR`     | `logs`                                    | Directory for request logs (see below).                              |
+| Variable           | Default                                   | Description                                                          |
+| ------------------ | ----------------------------------------- | -------------------------------------------------------------------- |
+| `APP_ENV`          | `local`                                   | `local` enables seed data; set to `prod` for production deployments. |
+| `BASE_URL`         | `http://localhost:7000`                   | External origin used when constructing short URLs.                   |
+| `PORT`             | `7000`                                    | HTTP listen port.                                                    |
+| `DB_URL`           | `jdbc:postgresql://localhost:5432/minurl` | JDBC URL for Postgres.                                               |
+| `DB_USER`          | `minurl`                                  | Database username.                                                   |
+| `DB_PASSWORD`      | `minurl`                                  | Database password.                                                   |
+| `LOG_DIR`          | `logs`                                    | Directory for request logs (see below).                              |
+| `BASIC_AUTH_USERS` | _(required)_                              | Comma-separated `username:BCryptHash` pairs for HTTP Basic auth.     |
 
 Set `LIQUIBASE_CONTEXTS=local` when running Liquibase commands manually to include the local seed.
+
+## Authentication
+
+`POST /api/shorten` is protected with HTTP Basic authentication. Provide one or more credentials via `BASIC_AUTH_USERS`, for example:
+
+```
+BASIC_AUTH_USERS="admin:$2a$10$7EqJtq98hPqEX7fNZaFWoO3Z7N/1ob7Hu0f1D/Gg7OfG4yJ/9F9Wy"
+```
+
+The example above corresponds to the password `password` and is offered for local use only. Generate unique hashes for each deployment with a BCrypt-capable tool such as `htpasswd -nBC 12 admin | cut -d: -f2`, or via JShell:
+
+```
+mvn -q dependency:build-classpath "-Dmdep.outputFile=target/classpath.txt"
+jshell --class-path "$(Get-Content target/classpath.txt -Raw)"
+jshell> import org.mindrot.jbcrypt.BCrypt;
+jshell> System.out.println(BCrypt.hashpw("choose-a-strong-password", BCrypt.gensalt(12)));
+```
+
+Restart the service after updating credentials. The authenticated username is exposed to request handlers through the `authenticatedUser` context attribute.
 
 ## Database management
 
@@ -57,10 +77,10 @@ Both scripts honour standard `PG*` environment variables and default to the loca
 
 ## API surface
 
-- `POST /api/shorten` → `{"shortUrl": "<BASE_URL>/<code>"}`  
+- `POST /api/shorten` (requires Basic Auth) -> `{"shortUrl": "<BASE_URL>/<code>"}`  
   Accepts JSON payload `{"url":"..."}`. URLs are normalised (trim, lower-case host, remove tracking params, drop default ports, enforce HTTPS) before hashing. Codes are the Base62 representation of the SHA-256 digest with a minimum length of five characters and deterministic collision extension.
-- `GET /{code}` → 302 redirect to the stored canonical URL.
-- `GET /healthz` → Liveness probe.
+- `GET /{code}` -> 302 redirect to the stored canonical URL.
+- `GET /api/health` -> Liveness probe.
 
 ## Operational notes
 
@@ -70,5 +90,4 @@ Both scripts honour standard `PG*` environment variables and default to the loca
 
 ## TODO
 
-- Add auth
 - Add frontend
