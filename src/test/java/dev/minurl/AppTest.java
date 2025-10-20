@@ -37,8 +37,8 @@ class AppTest {
 
     @Test
     void generated_code_is_deterministic_sha_base62() {
-        String first = service.shorten("https://example.com/");
-        String second = service.shorten(" https://example.com ");
+        String first = service.shorten("https://example.com/", "alice");
+        String second = service.shorten(" https://example.com ", "alice");
         assertEquals("3zwNn", first);
         assertEquals(first, second);
         assertEquals(1, repository.insertAttempts);
@@ -46,7 +46,7 @@ class AppTest {
 
     @Test
     void service_resolves_stored_url() {
-        String code = service.shorten("https://sub.example.com:443/path?utm_source=x&ref=123");
+        String code = service.shorten("https://sub.example.com:443/path?utm_source=x&ref=123", "alice");
         assertTrue(repository.codeToUrl.containsKey(code));
         assertEquals("https://sub.example.com/path", service.resolve(code));
     }
@@ -54,6 +54,7 @@ class AppTest {
     private static final class InMemoryUrlRepository implements UrlRepository {
         private final Map<String, String> codeToUrl = new HashMap<>();
         private final Map<String, String> urlToCode = new HashMap<>();
+        private final Map<String, String> codeToCreator = new HashMap<>();
         private int insertAttempts = 0;
 
         @Override
@@ -67,13 +68,14 @@ class AppTest {
         }
 
         @Override
-        public boolean insert(String code, String normalizedUrl) {
+        public boolean insert(String code, String normalizedUrl, String createdBy) {
             insertAttempts++;
             if (codeToUrl.containsKey(code) || urlToCode.containsKey(normalizedUrl)) {
                 return false;
             }
             codeToUrl.put(code, normalizedUrl);
             urlToCode.put(normalizedUrl, code);
+            codeToCreator.put(code, createdBy);
             return true;
         }
     }

@@ -7,5 +7,5 @@ public interface UrlRepository {
 
     Optional<String> findCodeByNormalizedUrl(String normalizedUrl);
 
-    boolean insert(String code, String normalizedUrl);
+    boolean insert(String code, String normalizedUrl, String createdBy);
 }

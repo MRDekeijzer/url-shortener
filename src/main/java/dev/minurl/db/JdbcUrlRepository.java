@@ -20,8 +20,8 @@ public class JdbcUrlRepository implements UrlRepository {
             WHERE normalized_url = ?
             """;
     private static final String INSERT_SQL = """
-            INSERT INTO short_urls (code, normalized_url)
-            VALUES (?, ?)
+            INSERT INTO short_urls (code, normalized_url, created_by)
+            VALUES (?, ?, ?)
             ON CONFLICT DO NOTHING
             """;
 
@@ -42,11 +42,12 @@ public class JdbcUrlRepository implements UrlRepository {
     }
 
     @Override
-    public boolean insert(String code, String normalizedUrl) {
+    public boolean insert(String code, String normalizedUrl, String createdBy) {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement statement = connection.prepareStatement(INSERT_SQL)) {
             statement.setString(1, code);
             statement.setString(2, normalizedUrl);
+            statement.setString(3, createdBy);
             return statement.executeUpdate() == 1;
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to insert short URL", ex);

@@ -3,3 +3,5 @@ databaseChangeLog:
       file: liquibase/changelog/0001-create-short-urls.yaml
   - include:
       file: liquibase/changelog/0002-seed-local.yaml
+  - include:
+      file: liquibase/changelog/0003-add-created-by.yaml

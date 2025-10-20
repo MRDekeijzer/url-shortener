@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0003-add-created-by
+      author: codex
+      changes:
+        - addColumn:
+            tableName: short_urls
+            columns:
+              - column:
+                  name: created_by
+                  type: VARCHAR(100)
+                  defaultValue: system
+        - addNotNullConstraint:
+            tableName: short_urls
+            columnName: created_by
+            columnDataType: VARCHAR(100)
+        - dropDefaultValue:
+            tableName: short_urls
+            columnName: created_by
+      rollback:
+        - dropColumn:
+            tableName: short_urls
+            columnName: created_by

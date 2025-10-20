@@ -53,11 +53,11 @@ public class App {
         app.before(ctx -> ctx.attribute("request-start-time", System.nanoTime()));
 
         app.post("/api/shorten", ctx -> {
-            requireAuth(ctx, hashedUsers);
+            String username = requireAuth(ctx, hashedUsers);
             var body = ctx.bodyAsClass(ShortenReq.class);
             if (body == null || body.url == null)
                 throw new BadRequestResponse("missing url");
-            String code = service.shorten(body.url);
+            String code = service.shorten(body.url, username);
             ctx.json(new ShortenRes(baseUrl + "/" + code));
         });
 
@@ -72,17 +72,19 @@ public class App {
             Long start = ctx.attribute("request-start-time");
             long durationMs = start == null ? -1L : (System.nanoTime() - start) / 1_000_000;
             int status = ctx.res().getStatus();
-            REQUEST_LOGGER.info("{} {} {} {}ms",
+            String user = ctx.attribute(AUTH_USER_ATTRIBUTE);
+            REQUEST_LOGGER.info("{} {} {} {}ms {}",
                     ctx.method(),
                     ctx.fullUrl(),
                     status,
-                    durationMs);
+                    durationMs,
+                    user == null ? "-" : user);
         });
 
         app.start(config.port());
     }
 
-    private static void requireAuth(Context ctx, Map<String, String> hashedUsers) {
+    private static String requireAuth(Context ctx, Map<String, String> hashedUsers) {
         var credentials = ctx.basicAuthCredentials();
         if (credentials == null) {
             throw unauthorized(ctx);
@@ -94,6 +96,7 @@ public class App {
         }
 
         ctx.attribute(AUTH_USER_ATTRIBUTE, credentials.getUsername());
+        return credentials.getUsername();
     }
 
     private static UnauthorizedResponse unauthorized(Context ctx) {

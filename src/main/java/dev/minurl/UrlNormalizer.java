@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import io.javalin.http.BadRequestResponse;
 
@@ -59,8 +58,13 @@ public class UrlNormalizer {
         String userInfo = parsed.getUserInfo();
 
         try {
-            URI normalized = new URI(scheme, userInfo, host, port, path, query, null);
-            return normalized.toASCIIString();
+            URI authorityOnly = new URI(scheme, userInfo, host, port, null, null, null);
+            StringBuilder builder = new StringBuilder(authorityOnly.toASCIIString());
+            builder.append(path);
+            if (query != null) {
+                builder.append('?').append(query);
+            }
+            return builder.toString();
         } catch (URISyntaxException ex) {
             throw new BadRequestResponse("invalid url");
         }
@@ -115,20 +119,19 @@ public class UrlNormalizer {
         if (rawPath == null || rawPath.isEmpty()) {
             return "/";
         }
-        List<String> segments = new ArrayList<>();
-        for (String segment : rawPath.split("/")) {
-            if (segment.isEmpty()) {
-                continue;
-            }
-            segments.add(percentDecode(segment, false));
+        String[] parts = rawPath.split("/", -1);
+        List<String> encodedSegments = new ArrayList<>(parts.length);
+        for (String part : parts) {
+            String decoded = percentDecode(part, false);
+            encodedSegments.add(encodePathSegment(decoded));
         }
-        if (segments.isEmpty()) {
-            return "/";
+        String normalized = String.join("/", encodedSegments);
+        if (normalized.isEmpty()) {
+            normalized = "/";
         }
-        String joined = segments.stream()
-                .map(UrlNormalizer::encodePathSegment)
-                .collect(Collectors.joining("/"));
-        String normalized = "/" + joined;
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
         if (normalized.length() > 1 && normalized.endsWith("/")) {
             return normalized.substring(0, normalized.length() - 1);
         }

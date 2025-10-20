@@ -46,21 +46,21 @@ class UrlNormalizerTest {
     }
 
     @Test
-    void normalizePath_collapses_duplicate_segments_and_trailing_slash() {
+    void normalizePath_preserves_duplicate_segments() {
         String normalized = normalizer.normalize("https://example.com//foo//bar/");
-        assertEquals("https://example.com/foo/bar", normalized);
+        assertEquals("https://example.com//foo//bar", normalized);
     }
 
     @Test
     void normalizePath_decodes_and_reencodes_segments() {
         String normalized = normalizer.normalize("https://example.com/%7Euser/Hello%20World");
-        assertEquals("https://example.com/~user/Hello%2520World", normalized);
+        assertEquals("https://example.com/~user/Hello%20World", normalized);
     }
 
     @Test
     void normalizeQuery_sorts_parameters_and_encodes_spaces() {
         String normalized = normalizer.normalize("https://example.com/path?b=hi+there&&c&a=1");
-        assertEquals("https://example.com/path?a=1&b=hi%2520there&c", normalized);
+        assertEquals("https://example.com/path?a=1&b=hi%20there&c", normalized);
     }
 
     @Test

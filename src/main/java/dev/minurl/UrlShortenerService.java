@@ -21,10 +21,10 @@ public class UrlShortenerService {
         this.urlMinLength = urlMinLength;
     }
 
-    public String shorten(String url) {
+    public String shorten(String url, String createdBy) {
         String normalized = normalizer.normalize(url);
         return repository.findCodeByNormalizedUrl(normalized)
-                .orElseGet(() -> createNewCode(normalized));
+                .orElseGet(() -> createNewCode(normalized, createdBy));
     }
 
     public String resolve(String code) {
@@ -32,11 +32,11 @@ public class UrlShortenerService {
                 .orElseThrow(() -> new NotFoundResponse("unknown code"));
     }
 
-    private String createNewCode(String normalizedUrl) {
+    private String createNewCode(String normalizedUrl, String createdBy) {
         String baseHash = codeGenerator.hash(normalizedUrl);
         for (int length = urlMinLength; length <= baseHash.length(); length++) {
             String candidate = baseHash.substring(0, length);
-            if (repository.insert(candidate, normalizedUrl)) {
+            if (repository.insert(candidate, normalizedUrl, createdBy)) {
                 return candidate;
             }
             Optional<String> existing = repository.findCodeByNormalizedUrl(normalizedUrl);

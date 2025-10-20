@@ -52,7 +52,7 @@ jshell> import org.mindrot.jbcrypt.BCrypt;
 jshell> System.out.println(BCrypt.hashpw("choose-a-strong-password", BCrypt.gensalt(12)));
 ```
 
-Restart the service after updating credentials. The authenticated username is exposed to request handlers through the `authenticatedUser` context attribute.
+Restart the service after updating credentials. The authenticated username is exposed to request handlers through the `authenticatedUser` context attribute and is persisted to `short_urls.created_by` the first time a normalised URL is shortened.
 
 ## Database management
 
@@ -64,7 +64,7 @@ All commands honour the `DB_URL`, `DB_USER`, `DB_PASSWORD`, and optional `LIQUIB
 
 ## Request logging
 
-Request/response metadata is written to `logs/requests.log` with daily rotation and a seven day retention window. Override the folder via `LOG_DIR`. Ensure the directory exists or allow Logback to create it on first write.
+Request/response metadata is written to `logs/requests.log` with daily rotation and a seven day retention window. Override the folder via `LOG_DIR`. Ensure the directory exists or allow Logback to create it on first write. The authenticated username (or `-` for anonymous endpoints) is appended to each log line.
 
 ## Database dumps
 
