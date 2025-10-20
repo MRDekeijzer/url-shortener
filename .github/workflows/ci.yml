@@ -21,3 +21,11 @@ jobs:
 
       - name: Build and test
         run: mvn -B verify
+
+      - name: Upload shaded JAR artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minurl-jar
+          path: target/minurl-*-shaded.jar
+          if-no-files-found: error
